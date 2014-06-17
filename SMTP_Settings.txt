@@ -1,0 +1,22 @@
+#                               #
+#   Settings for SMTP server    #
+#                               # 
+#################################
+
+#################
+# SMTP Server Host
+# Put your SMTP host
+SMTPHost = 'cmailer.indiatimes.com'
+
+#################
+# MAIL Recipient
+Recipient = 'tc-dev@indiatimes.co.in'
+
+#################
+# Reverse mail (From who has been sended this e-mail)
+# !! IMPORTANT!! Domain of the return mail MUST EXIST
+Reverse = 'pradeep.sethi@indiatimes.co.in'
+
+#################
+# END # Do not remove that diggit!!!
+1;
