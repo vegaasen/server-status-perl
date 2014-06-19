@@ -1,24 +1,18 @@
 #!/usr/bin/perl
+
 use warnings;
 use strict;
 use Tie::File;
 use Net::SMTP;
 use LWP::UserAgent;
 
-#################################################################
-#             Program  Settings
-#
-my $error_log  = 'Responser_errors.txt';# File to store errors of program
-my $input_file = 'urls.txt';       # From where program will read WEB Addresses
-my $smtp_file  = 'SMTP_Settings.txt';   # File for SMTP Settings
-my $response_limit = 5; #In Seconds    # Positively diggit -> SendMail;
-                                        #        0 -> will not send mail
-my $send_mail  = 0;                # my $send_mail  = 1; ->SMTP option is ON,
-                                   # my $send_mail  = 0; ->SMTP option is OFF
-##################################################################
-#                      END OF SETTINGS
-# Do not edit bellow if you dont understand it.
-##################################################################
+my $error_log  = 'uptime.err';
+my $input_file = 'urls';
+my $smtp_file  = 'smtp.settings';
+
+my $response_limit = 5; 
+my $send_mail  = 0;
+
 die "File $input_file is not exist\n" unless (-e $input_file);
 die "SMTP is ON, but file $smtp_file is not exist\n" unless (-e $smtp_file);
 my $localtime     = localtime;
@@ -63,12 +57,9 @@ for (0 .. $#all_addr) {
  chop $all_addr[$_] if ($all_addr[$_] =~ /\s+$/);
  next if ($all_addr[$_]  eq "");
  if ($all_addr[$_] =~ /^http:\/\/\S+\.\w{2,4}$/) {  
-      #address will beginnig with http://,next some string
-      # finish with point and 2 to 4 letters
-   check_url($all_addr[$_]);    #call subroutine check_url()
+   check_url($all_addr[$_]);
  } else {
-   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", 
-                           $all_addr[$_], "WRONG", "N/A";
+   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "WRONG", "N/A";
    printf OUT $out_format;
    printf $out_format;
          push @errors, "$all_addr[$_] is WRONG Address.";
@@ -143,6 +134,7 @@ sub check_url {  # subroutine who check given URL
           print $out_format;     # print to console
     }
 }
+
 sub error {      # subroutine who print in Error Log
   my $error_msg = shift;
   open ERR,">> $error_log" 
