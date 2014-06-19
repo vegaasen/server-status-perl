@@ -1,95 +1,132 @@
 #!/usr/bin/perl
 
+#
+# Simple perl-script that does the following:
+# -reads a domain-list that just issues a request to wherever specified. Then, it will just output this stuff to a specified file + 
+# as output, mimc'd through a html-page with page-reload.
+# 
+# @author vegaasen
+#
+
 use warnings;
 use strict;
 use Tie::File;
 use LWP::UserAgent;
 
 my $error_log  = 'uptime.err';
-my $input_file = 'urls';
+my $domains = 'domain.list';
 
 my $response_limit = 5; 
+my $consolePrint = 1;
 
-die "File $input_file is not exist\n" unless (-e $input_file);
+die "File $domains is not exist\n" unless (-e $domains);
 my $localtime     = localtime;
+my $serverStatuses; # currently, jeah this is the name. will be an object in the end. However not now.
 our @errors;
 my ($day,$month,$date,$hour,$year) = split /\s+/,scalar localtime;
 my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.txt';
-tie @all_addr, 'Tie::File', 
-    $input_file or error("Cant open $input_file to read addresses");
+my (@all_addr) = ();
+tie @all_addr, 'Tie::File', $domains or error("Cant open file: $domains to read the list of domains");
 if (-e $output_file) {
    open(OUT,">> $output_file") 
-      or error("Cant open exist file $output_file for append");
+	  or error("Cant open exist file $output_file for append");
 } else {
    open(OUT,"> $output_file") 
-      or error("Cant open new file $output_file for writting");
+	  or error("Cant open new file $output_file for writting");
 }
 
-print OUT "\n+" .('-' x 84) . "+\n";
-print OUT   "|", ' ' x 30,"Time: $hour",' ' x 40,"|\n";
-print OUT   "|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, 
-                               "RESPONSE            |\n";
-print OUT   "+" .('-' x 84) . "+\n";
-for (0 .. $#all_addr) {
- chop $all_addr[$_] if ($all_addr[$_] =~ /\s+$/);
- next if ($all_addr[$_]  eq "");
- if ($all_addr[$_] =~ /^http:\/\/\S+\.\w{2,4}$/) {  
-   check_url($all_addr[$_]);
- } else {
-   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "WRONG", "N/A";
-   printf OUT $out_format;
-   printf $out_format;
-         push @errors, "$all_addr[$_] is WRONG Address.";
- }
+sub checkAddresses() {
+	print OUT "\n+" .('-' x 84) . "+\n";
+	print OUT   "|", ' ' x 30,"Time: $hour",' ' x 40,"|\n";
+	print OUT   "|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, "RESPONSE            |\n";
+	print OUT   "+" .('-' x 84) . "+\n";
+	for (0 .. $#all_addr) {
+	 chop $all_addr[$_] if ($all_addr[$_] =~ /\s+$/);
+	 next if ($all_addr[$_]  eq "");
+	 if ($all_addr[$_] =~ /^(http|https):\/\/\S+\.\w{0,}$/) {  
+	   domainCheck($all_addr[$_]);
+	 } else {
+	   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "WRONG", "N/A";
+	   printf OUT $out_format;
+	   printf $out_format;
+			 push @errors, "$all_addr[$_] is WRONG Address.";
+	 }
 }
 
-my $err = join "\015\012",@errors;
-my $err_num = scalar @errors;
-$send_mail = 0 unless $err_num;
-untie @all_addr or error("Unable to close file $input_file");
-
-close OUT or error("Unable to close file $output_file");
-print "\nProcess FINISH\n";
-
-sub check_url {  # subroutine who check given URL
+sub domainCheck {
     my $target = $_[0];
-        my $ua = LWP::UserAgent->new;
-        $ua->agent("$0/0.1 " . $ua->agent);
-        my $req = HTTP::Request->new(GET => "$target");
-        $req->header('Accept' => 'text/html');          #Accept HTML Page
-        # send request
-        my $start = time;      # Start timer
-        my $res = $ua->request($req);
-        # check the outcome
-        if ($res->is_success) {
-        # Success....all content of page has been received
-          my $time = time;     # End timer
-          my $out_format;
-          $time = ($time - $start); # Result of timer
-          if ($response_limit && ($response_limit <= $time)) {
-             push(@errors, "Slow response from $target\: $time seconds");
-             $out_format = sprintf "| %-50.50s %-10s %-20s |\n", 
-                      $target, "SLOW", "Response $time seconds";
-          } else {
-             $out_format = sprintf "| %-50.50s %-10s %-20s |\n", 
-                  $target, "ACCESSED", "Response $time seconds";
-          }
-          print OUT $out_format; # write to file
-          print $out_format;     # print to console
-        } else { # Error .... Site is DOWN and script send e-mail to you..
-          my $out_format = sprintf "| %-50.50s %-10s %-20s |\n", 
-                                          $target, "DOWN", " N/A";
-          push(@errors, "$target is DOWN." . $res->status_line) 
-                           or error("Cannot push error for DOWN");
-          print OUT $out_format; # write to file
-          print $out_format;     # print to console
+	my $ua = LWP::UserAgent->new;
+	$ua->agent("$0/0.1 " . $ua->agent);
+	my $req = HTTP::Request->new(GET => "$target");
+	$req->header('Accept' => '*/*');
+	my $startTime = time;
+	my $res = $ua->request($req);
+	storeServerStatus($req);
+	if ($res->is_success) {
+	  my $endTime = time;
+	  my $out_format;
+	  $endTime = ($endTime - $startTime);
+	  if ($response_limit && ($response_limit <= $endTime)) {
+		 push(@errors, "Slow response from $target\: $endTime seconds");
+		 $out_format = sprintf "| %-50.50s %-10s %-20s |\n", $target, "SLOW", "Response $endTime seconds";
+	  } else {
+		 $out_format = sprintf "| %-50.50s %-10s %-20s |\n", 
+			  $target, "ACCESSED", "Response $endTime seconds";
+	  }
+	  print OUT $out_format;
+	  toss($out_format);
+	} else {
+	  my $out_format = sprintf "| %-50.50s %-10s %-20s |\n", $target, "DOWN", " N/A";
+	  push(@errors, "$target is DOWN." . $res->status_line) or error("Cannot push error for DOWN");
+	  print OUT $out_format;
+	  toss($out_format);
     }
 }
 
-sub error {      # subroutine who print in Error Log
+sub storeServerStatus() {
+	my $request = $_[0];
+	$serverStatuses = $serverStatuses 
+	. 
+	"";
+}
+sub toss() {
+	my $what = $_[0];
+	if($consolePrint == 1) {
+		print $what;
+	}
+}
+
+sub error {
   my $error_msg = shift;
-  open ERR,">> $error_log" 
-       or die "Cannot open log file $error_log : $!\n";
+  open ERR,">> $error_log" or die "Cannot open log file $error_log : $!\n";
   print ERR "$localtime\: $error_msg : $!\n";
   close ERR or die "Cannot close log file $error_log : $!\n";
 }
+
+sub cleanUp() {
+	my $err = join "\015\012",@errors;
+	my $err_num = scalar @errors;
+	untie @all_addr or error("Unable to close file $domains");
+
+	close OUT or error("Unable to close file $output_file");
+	print "\nProcess FINISH\n";
+	}
+}
+
+sub printHead() {
+	print "Content-type: text/html;charset=utf-8\n\n";
+	print "<!DOCTYPE html>\n<html><head><title>Perl ServerOverView Status</title></head><body>";
+}
+
+sub printTail() {
+	print "<footer>&copy;vegaasen</footer></body></html>\n";
+}
+
+# Start the thingie, plx!
+
+checkAddresses();
+cleanUp();
+printHead();
+printTail();
+
+print $serverStatuses;
