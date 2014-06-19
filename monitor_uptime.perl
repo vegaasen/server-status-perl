@@ -3,23 +3,18 @@
 use warnings;
 use strict;
 use Tie::File;
-use Net::SMTP;
 use LWP::UserAgent;
 
 my $error_log  = 'uptime.err';
 my $input_file = 'urls';
-my $smtp_file  = 'smtp.settings';
 
 my $response_limit = 5; 
-my $send_mail  = 0;
 
 die "File $input_file is not exist\n" unless (-e $input_file);
-die "SMTP is ON, but file $smtp_file is not exist\n" unless (-e $smtp_file);
 my $localtime     = localtime;
 our @errors;
 my ($day,$month,$date,$hour,$year) = split /\s+/,scalar localtime;
 my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.txt';
-my ($smtp_host,$recipient,$reverse_path, @all_addr) = ();
 tie @all_addr, 'Tie::File', 
     $input_file or error("Cant open $input_file to read addresses");
 if (-e $output_file) {
@@ -29,25 +24,7 @@ if (-e $output_file) {
    open(OUT,"> $output_file") 
       or error("Cant open new file $output_file for writting");
 }
-my @smtp_settings;
-if ($^O =~ /win/i) {
-        tie @smtp_settings, 'Tie::File', $smtp_file,, 
-            recsep => "\012" 
-            or error("Cant open $smtp_file to read SMTP settings");
-} else {
-tie @smtp_settings, 'Tie::File', $smtp_file,autochomp => '0' 
-    or error("Cant open $smtp_file to read SMTP settings");
-}
-for (@smtp_settings) {
-   chomp;
-   next if /^#/;
-   #next if /^$/;
- if (/^(\w+)\s=\s'(\S+)'/) {
-   $smtp_host     = $2 if ($1 eq 'SMTPHost');
-   $recipient     = $2 if ($1 eq 'Recipient');
-   $reverse_path  = $2 if ($1 eq 'Reverse');
- }
-}
+
 print OUT "\n+" .('-' x 84) . "+\n";
 print OUT   "|", ' ' x 30,"Time: $hour",' ' x 40,"|\n";
 print OUT   "|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, 
@@ -67,35 +44,9 @@ for (0 .. $#all_addr) {
 }
 
 my $err = join "\015\012",@errors;
-my $err_num = scalar @errors;  # How match DOWN + WRONG Sites have
+my $err_num = scalar @errors;
 $send_mail = 0 unless $err_num;
 untie @all_addr or error("Unable to close file $input_file");
-if ($send_mail) {
- my $smtp = Net::SMTP->new($smtp_host,
-                    -Debug=>1,
-                    -Timeout=>20,
-                    -Hello=>"$smtp_host") 
-                        or error("Cant connect to $smtp_host");
-# Begin Compare mail message
-my $msg = <<__END_OF_MAIL__;
-To: $recipient
-Subject: $err_num Error Sites | $localtime .
-$localtime
-$err
-
-__END_OF_MAIL__
-# End Compare
-
- $smtp->mail("$reverse_path") 
-       or error("Failed to specify a reverse-path");#  If all is OK
- $smtp->to($recipient) 
-       or error("Failed to specify a recipient");   #  that will
- $smtp->data([$msg]) 
-       or error("Failed to send a message");     #  send mail
- $smtp->quit or error("Failed to quit");         #  to You
-} else {
-  print "Send Mail is OFF\n" if $err_num; # If you do not wish to receive mail
-}
 
 close OUT or error("Unable to close file $output_file");
 print "\nProcess FINISH\n";
