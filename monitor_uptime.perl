@@ -21,18 +21,19 @@ my $consolePrint = 1;
 
 die "File $domains is not exist\n" unless (-e $domains);
 my $localtime     = localtime;
-my $serverStatuses; # currently, jeah this is the name. will be an object in the end. However not now.
-our @errors;
+my @serverStatuses; # currently, jeah this is the name. will be an object in the end. However not now.
+my @errors;
 my ($day,$month,$date,$hour,$year) = split /\s+/,scalar localtime;
-my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.txt';
+my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.out';
 my (@all_addr) = ();
-tie @all_addr, 'Tie::File', $domains or error("Cant open file: $domains to read the list of domains");
+tie @all_addr, 'Tie::File', $domains or error("Cant open file {$domains} to read the list of domains");
+
 if (-e $output_file) {
    open(OUT,">> $output_file") 
-	  or error("Cant open exist file $output_file for append");
+	  or error("Cant append to existing file $output_file");
 } else {
    open(OUT,"> $output_file") 
-	  or error("Cant open new file $output_file for writting");
+	  or error("Cant write to file $output_file");
 }
 
 sub checkAddresses() {
@@ -51,6 +52,7 @@ sub checkAddresses() {
 	   printf $out_format;
 			 push @errors, "$all_addr[$_] is WRONG Address.";
 	 }
+	}
 }
 
 sub domainCheck {
@@ -61,7 +63,7 @@ sub domainCheck {
 	$req->header('Accept' => '*/*');
 	my $startTime = time;
 	my $res = $ua->request($req);
-	storeServerStatus($req);
+	storeServerStatus($res);
 	if ($res->is_success) {
 	  my $endTime = time;
 	  my $out_format;
@@ -84,11 +86,10 @@ sub domainCheck {
 }
 
 sub storeServerStatus() {
-	my $request = $_[0];
-	$serverStatuses = $serverStatuses 
-	. 
-	"";
+	push(@serverStatuses, $_[0]);
+	toss("Added request");
 }
+
 sub toss() {
 	my $what = $_[0];
 	if($consolePrint == 1) {
@@ -110,16 +111,25 @@ sub cleanUp() {
 
 	close OUT or error("Unable to close file $output_file");
 	print "\nProcess FINISH\n";
+}
+
+sub printAllStatuses() {
+	print '<div class="wrapper">';
+	print '<table class="table"><thead><tr>URL<th>Status</th>Last modified<th></th><th>When Requested</th></tr></thead><tbody>';
+	foreach(@serverStatuses) {
+		print '<tr><td>' . $_->request()->uri() . '</td><td>' . $_->status_line() . '</td><td>' . $_->header("Last-Modified") . '</td><td>' . $_->header("Content-type") . '</td></tr>';
 	}
+	print '</tbody></table>';
+	print '</div>';
 }
 
 sub printHead() {
 	print "Content-type: text/html;charset=utf-8\n\n";
-	print "<!DOCTYPE html>\n<html><head><title>Perl ServerOverView Status</title></head><body>";
+	print "<!DOCTYPE html>\n<html>\n<head><title>Domain statusoverview</title></head>\n<body>";
 }
 
 sub printTail() {
-	print "<footer>&copy;vegaasen</footer></body></html>\n";
+	print "<footer>&copy;vegaasen</footer>\n</body></html>\n";
 }
 
 # Start the thingie, plx!
@@ -127,6 +137,5 @@ sub printTail() {
 checkAddresses();
 cleanUp();
 printHead();
+printAllStatuses();
 printTail();
-
-print $serverStatuses;
