@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-
 #
 # Simple perl-script that does the following:
 # -reads a domain-list that just issues a request to wherever specified. Then, it will just output this stuff to a specified file + 
@@ -8,20 +7,50 @@
 # @author vegaasen
 #
 
+###########################################
+package Result;
+
+use warnings;
+use strict;
+
+sub new {
+    my $class = shift;
+    my $self  = { @_ };
+    return bless $self, $class;
+}
+
+sub response {
+	my $self = shift;
+	return $self->{response};
+}
+
+sub responseTime {
+	my $self = shift;
+	return $self->{responseTime};
+}
+
+sub when {
+	my $self = shift;
+	return $self->{when};
+}
+###########################################
+package main;
+
 use warnings;
 use strict;
 use Tie::File;
 use LWP::UserAgent;
+use Time::Piece;
 
 my $error_log  = 'uptime.err';
 my $domains = 'domain.list';
 
 my $response_limit = 5; 
-my $consolePrint = 1;
+my $consolePrint = 0;
 
 die "File $domains is not exist\n" unless (-e $domains);
 my $localtime     = localtime;
-my @serverStatuses; # currently, jeah this is the name. will be an object in the end. However not now.
+my @serverStatuses;
 my @errors;
 my ($day,$month,$date,$hour,$year) = split /\s+/,scalar localtime;
 my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.out';
@@ -44,7 +73,7 @@ sub checkAddresses() {
 	for (0 .. $#all_addr) {
 	 chop $all_addr[$_] if ($all_addr[$_] =~ /\s+$/);
 	 next if ($all_addr[$_]  eq "");
-	 if ($all_addr[$_] =~ /^(http|https):\/\/\S+\.\w{0,}$/) {  
+	 if ($all_addr[$_] =~ /^(http(s)?):\/\/([\w]+.{0,1}|)([\w_\-]+)(.[\w]{0,})?.*/) {  
 	   domainCheck($all_addr[$_]);
 	 } else {
 	   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "WRONG", "N/A";
@@ -63,11 +92,12 @@ sub domainCheck {
 	$req->header('Accept' => '*/*');
 	my $startTime = time;
 	my $res = $ua->request($req);
-	storeServerStatus($res);
-	if ($res->is_success) {
-	  my $endTime = time;
+	my $endTime = time;
+	$endTime = ($endTime - $startTime);
+	my $result = Result->new(response => $res, responseTime => $endTime, when => localtime($startTime)->strftime('%d.%m-%Y @ %H:%M:%S'));
+	storeServerStatus($result);
+	if ($res->is_success() || $res->is_redirect() || $res->is_info() || $res->code == 404) {
 	  my $out_format;
-	  $endTime = ($endTime - $startTime);
 	  if ($response_limit && ($response_limit <= $endTime)) {
 		 push(@errors, "Slow response from $target\: $endTime seconds");
 		 $out_format = sprintf "| %-50.50s %-10s %-20s |\n", $target, "SLOW", "Response $endTime seconds";
@@ -87,14 +117,7 @@ sub domainCheck {
 
 sub storeServerStatus() {
 	push(@serverStatuses, $_[0]);
-	toss("Added request");
-}
-
-sub toss() {
-	my $what = $_[0];
-	if($consolePrint == 1) {
-		print $what;
-	}
+	toss("Added result");
 }
 
 sub error {
@@ -110,26 +133,41 @@ sub cleanUp() {
 	untie @all_addr or error("Unable to close file $domains");
 
 	close OUT or error("Unable to close file $output_file");
-	print "\nProcess FINISH\n";
+	toss("Server check is done");
+}
+
+sub toss() {
+	my $what = $_[0];
+	if($consolePrint == 1) {
+		print $what;
+	}
 }
 
 sub printAllStatuses() {
 	print '<div class="wrapper">';
-	print '<table class="table"><thead><tr>URL<th>Status</th>Last modified<th></th><th>When Requested</th></tr></thead><tbody>';
+	print '<table class="table"><thead><tr><th>URL</th><th>Status</th><th>When Requested</th><th>Response Time</th></tr></thead><tbody>';
 	foreach(@serverStatuses) {
-		print '<tr><td>' . $_->request()->uri() . '</td><td>' . $_->status_line() . '</td><td>' . $_->header("Last-Modified") . '</td><td>' . $_->header("Content-type") . '</td></tr>';
+		if ($_->response->is_success() || $_->response->is_info() || $_->response->code == 404) {
+			print '<tr class="success">';
+		} elsif ($_->response->is_redirect()) {
+			print '<tr class="warning">';
+		} else {
+			print '<tr class="error">';
+		}
+		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->response->request->uri() . '</a></td><td>' . $_->response->status_line() . '</td><td>' . $_->when() . '</td><td>' . $_->responseTime() . 's</td></tr>';
 	}
 	print '</tbody></table>';
 	print '</div>';
 }
 
 sub printHead() {
-	print "Content-type: text/html;charset=utf-8\n\n";
-	print "<!DOCTYPE html>\n<html>\n<head><title>Domain statusoverview</title></head>\n<body>";
+	print "Content-Type: text/html; charset=UTF-8\n\n";
+	print "<!DOCTYPE html>\n<html>\n<head><title>Domain statusoverview</title><link href=\"https://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css\" rel=\"stylesheet\"></head>\n<body>\n";
+	print "<h1>Domain status overview</h1>";
 }
 
 sub printTail() {
-	print "<footer>&copy;vegaasen</footer>\n</body></html>\n";
+	print "<footer>&copy; <a href=\"http://www.vegaasen.com\" target=\"_blank\">vegaasen</a></footer>\n</body></html>\n";
 }
 
 # Start the thingie, plx!

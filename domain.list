@@ -1,2 +1,9 @@
-http://www.vg.no
-http://www.db.no
+https://test-testclient-sso.telenor.no/
+http://dev-testclient-sso.corp.telenor.no/
+http://dev-idp.corp.telenor.no/
+http://dev-idp.telenor.no/
+https://test-idp.corp.telenor.no
+https://test-idp.telenor.no
+http://ssotest:ssotest@dev-ssoapi.corp.telenor.no
+https://tss-admin.corp.telenor.no/
+https://test-tss-admin.corp.telenor.no/login
