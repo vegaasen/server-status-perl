@@ -9,7 +9,7 @@ https://test-tss-admin.corp.telenor.no/login
 https://test-testclient-sso.telenor.no
 https://test-idp.corp.telenor.no
 https://test-idp.telenor.no
-#name:prod#color:#FF7171
+#name:prod#color:#7AD159
 https://idp.corp.telenor.no
 https://idp.telenor.no
 https://tss-admin.corp.telenor.no/login
