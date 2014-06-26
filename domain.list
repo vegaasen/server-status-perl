@@ -1,16 +1,15 @@
-# dev
+#name:dev#color:#7A7A7A
 http://ssotest:ssotest@dev-ssoapi.corp.telenor.no
 http://dev-testclient-sso.corp.telenor.no
 http://dev-idp.corp.telenor.no
 http://dev-idp.telenor.no
 http://dev-mgmt-apigee.corp.telenor.no:9000
-# test
+#name:systest#color:#74D3FF
 https://test-tss-admin.corp.telenor.no/login
 https://test-testclient-sso.telenor.no
 https://test-idp.corp.telenor.no
 https://test-idp.telenor.no
-# prod
+#name:prod#color:#FF7171
 https://idp.corp.telenor.no
 https://idp.telenor.no
 https://tss-admin.corp.telenor.no/login
-http://whahdsadasd.com

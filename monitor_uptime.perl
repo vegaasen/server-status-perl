@@ -39,6 +39,11 @@ sub label {
 	return $self->{label};
 }
 
+sub color {
+	my $self = shift;
+	return $self->{color};
+}
+
 ###########################################
 package main;
 
@@ -75,15 +80,19 @@ sub checkAllDomains() {
 	print OUT   "|", ' ' x 30,"Time: $hour",' ' x 40,"|\n";
 	print OUT   "|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, "RESPONSE\t|\n";
 	print OUT   "+" .('-' x 84) . "+\n";
-	my $currentLabel;
+	my $name;
+	my $color;
 	for (0 .. $#all_addr) {
 	 chop $all_addr[$_] if ($all_addr[$_] =~ /\s+$/);
 	 next if ($all_addr[$_]  eq "");
-	 if ($all_addr[$_] =~ /^(#{1,1}.*)/) {
-	 	$currentLabel = $all_addr[$_];
+	 if ($all_addr[$_] =~ /^((.*)#{1,1}name:([\w]+)#.*)/) {
+	 	$name = (split /^((.*)#{1,1}name:([\w]+)#.*)/, $all_addr[$_])[3, 3];
+	 }
+	 if ($all_addr[$_] =~ /^((.*)#{1,1}color:(.*))/) {
+		$color = (split /^((.*)#{1,1}color:(.*))/, $all_addr[$_])[3, 3];
 	 }
 	 if ($all_addr[$_] =~ /^(http(s)?):\/\/([\w]+.{0,1}|)([\w_\-]+)(.[\w]{0,})?.*/) {  
-	   checkSingleDomain($all_addr[$_], $currentLabel);
+	   checkSingleDomain($all_addr[$_], $name, $color);
 	 } else {
 	   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "<--INCORRECT", "N/A";
 	   printf OUT $out_format;
@@ -96,6 +105,7 @@ sub checkAllDomains() {
 sub checkSingleDomain {
     my $target = $_[0];
     my $label = $_[1];
+    my $color = $_[2];
 	my $ua = LWP::UserAgent->new;
 	$ua->agent("DomainStatusPerl/0.1-SNAPSHOT");
 	my $req = HTTP::Request->new(GET => "$target");
@@ -104,7 +114,7 @@ sub checkSingleDomain {
 	my $res = $ua->request($req);
 	my $endTime = time;
 	$endTime = ($endTime - $startTime);
-	my $result = Result->new(response => $res, responseTime => $endTime, when => localtime($startTime)->strftime('%d.%m-%Y @ %H:%M:%S'), label => $label);
+	my $result = Result->new(response => $res, responseTime => $endTime, when => localtime($startTime)->strftime('%d.%m-%Y @ %H:%M:%S'), label => $label, color => $color);
 	storeServerStatus($result);
 	if ($res->is_success() || $res->is_redirect() || $res->is_info() || $res->code == 404) {
 	  my $out_format;
@@ -163,7 +173,7 @@ sub printAllStatuses() {
 		} else {
 			print '<tr class="error">';
 		}
-		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->response->request->uri() . '</a></td><td><span class="label label-success">' . $_->label() . '</span></td><td>' . $_->response->status_line() . '</td><td>' . $_->when() . '</td><td>' . $_->responseTime() . 's</td></tr>';
+		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->response->request->uri() . '</a></td><td><span class="label label-success" style="background-color:' . $_->color() . '">' . $_->label() . '</span></td><td>' . $_->response->status_line() . '</td><td>' . $_->when() . '</td><td>' . $_->responseTime() . 's</td></tr>';
 	}
 	print '</tbody></table>';
 }
