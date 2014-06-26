@@ -1,9 +1,16 @@
-https://test-testclient-sso.telenor.no/
-http://dev-testclient-sso.corp.telenor.no/
-http://dev-idp.corp.telenor.no/
-http://dev-idp.telenor.no/
+# dev
+http://ssotest:ssotest@dev-ssoapi.corp.telenor.no
+http://dev-testclient-sso.corp.telenor.no
+http://dev-idp.corp.telenor.no
+http://dev-idp.telenor.no
+http://dev-mgmt-apigee.corp.telenor.no:9000
+# test
+https://test-tss-admin.corp.telenor.no/login
+https://test-testclient-sso.telenor.no
 https://test-idp.corp.telenor.no
 https://test-idp.telenor.no
-http://ssotest:ssotest@dev-ssoapi.corp.telenor.no
-https://tss-admin.corp.telenor.no/
-https://test-tss-admin.corp.telenor.no/login
+# prod
+https://idp.corp.telenor.no
+https://idp.telenor.no
+https://tss-admin.corp.telenor.no/login
+http://whahdsadasd.com

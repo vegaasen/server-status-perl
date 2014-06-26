@@ -33,6 +33,12 @@ sub when {
 	my $self = shift;
 	return $self->{when};
 }
+
+sub label {
+	my $self = shift;
+	return $self->{label};
+}
+
 ###########################################
 package main;
 
@@ -41,60 +47,64 @@ use strict;
 use Tie::File;
 use LWP::UserAgent;
 use Time::Piece;
-
 my $error_log  = 'uptime.err';
 my $domains = 'domain.list';
-
 my $response_limit = 5; 
-my $consolePrint = 0;
-
-die "File $domains is not exist\n" unless (-e $domains);
+my $consolePrint = 1;
 my $localtime     = localtime;
 my @serverStatuses;
 my @errors;
 my ($day,$month,$date,$hour,$year) = split /\s+/,scalar localtime;
 my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.out';
 my (@all_addr) = ();
-tie @all_addr, 'Tie::File', $domains or error("Cant open file {$domains} to read the list of domains");
+die "File $domains is not exist\n" unless (-e $domains);
 
-if (-e $output_file) {
-   open(OUT,">> $output_file") 
-	  or error("Cant append to existing file $output_file");
-} else {
-   open(OUT,"> $output_file") 
-	  or error("Cant write to file $output_file");
+sub configure() {
+	tie @all_addr, 'Tie::File', $domains or error("Cant open file {$domains} to read the list of domains");
+	if (-e $output_file) {
+	   open(OUT,">> $output_file") 
+		  or error("Cant append to existing file $output_file");
+	} else {
+	   open(OUT,"> $output_file") 
+		  or error("Cant write to file $output_file");
+	}
 }
 
-sub checkAddresses() {
+sub checkAllDomains() {
 	print OUT "\n+" .('-' x 84) . "+\n";
 	print OUT   "|", ' ' x 30,"Time: $hour",' ' x 40,"|\n";
-	print OUT   "|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, "RESPONSE            |\n";
+	print OUT   "|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, "RESPONSE\t|\n";
 	print OUT   "+" .('-' x 84) . "+\n";
+	my $currentLabel;
 	for (0 .. $#all_addr) {
 	 chop $all_addr[$_] if ($all_addr[$_] =~ /\s+$/);
 	 next if ($all_addr[$_]  eq "");
+	 if ($all_addr[$_] =~ /^(#{1,1}.*)/) {
+	 	$currentLabel = $all_addr[$_];
+	 }
 	 if ($all_addr[$_] =~ /^(http(s)?):\/\/([\w]+.{0,1}|)([\w_\-]+)(.[\w]{0,})?.*/) {  
-	   domainCheck($all_addr[$_]);
+	   checkSingleDomain($all_addr[$_], $currentLabel);
 	 } else {
-	   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "WRONG", "N/A";
+	   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "<--INCORRECT", "N/A";
 	   printf OUT $out_format;
-	   printf $out_format;
-			 push @errors, "$all_addr[$_] is WRONG Address.";
+	   toss($out_format);
+	   push @errors, "$all_addr[$_] is not a valid domain.";
 	 }
 	}
 }
 
-sub domainCheck {
+sub checkSingleDomain {
     my $target = $_[0];
+    my $label = $_[1];
 	my $ua = LWP::UserAgent->new;
-	$ua->agent("$0/0.1 " . $ua->agent);
+	$ua->agent("DomainStatusPerl/0.1-SNAPSHOT");
 	my $req = HTTP::Request->new(GET => "$target");
 	$req->header('Accept' => '*/*');
 	my $startTime = time;
 	my $res = $ua->request($req);
 	my $endTime = time;
 	$endTime = ($endTime - $startTime);
-	my $result = Result->new(response => $res, responseTime => $endTime, when => localtime($startTime)->strftime('%d.%m-%Y @ %H:%M:%S'));
+	my $result = Result->new(response => $res, responseTime => $endTime, when => localtime($startTime)->strftime('%d.%m-%Y @ %H:%M:%S'), label => $label);
 	storeServerStatus($result);
 	if ($res->is_success() || $res->is_redirect() || $res->is_info() || $res->code == 404) {
 	  my $out_format;
@@ -115,6 +125,15 @@ sub domainCheck {
     }
 }
 
+sub cleanUp() {
+	my $err = join "\015\012",@errors;
+	my $err_num = scalar @errors;
+	untie @all_addr or error("Unable to close file $domains");
+
+	close OUT or error("Unable to close file $output_file");
+	toss("Server check is complete");
+}
+
 sub storeServerStatus() {
 	push(@serverStatuses, $_[0]);
 	toss("Added result");
@@ -127,15 +146,6 @@ sub error {
   close ERR or die "Cannot close log file $error_log : $!\n";
 }
 
-sub cleanUp() {
-	my $err = join "\015\012",@errors;
-	my $err_num = scalar @errors;
-	untie @all_addr or error("Unable to close file $domains");
-
-	close OUT or error("Unable to close file $output_file");
-	toss("Server check is done");
-}
-
 sub toss() {
 	my $what = $_[0];
 	if($consolePrint == 1) {
@@ -144,36 +154,39 @@ sub toss() {
 }
 
 sub printAllStatuses() {
-	print '<div class="wrapper">';
-	print '<table class="table"><thead><tr><th>URL</th><th>Status</th><th>When Requested</th><th>Response Time</th></tr></thead><tbody>';
+	print '<table class="table"><thead><tr><th>URL</th><th>Label</th><th>Status</th><th>When Requested</th><th>Response Time</th></tr></thead><tbody>';
 	foreach(@serverStatuses) {
 		if ($_->response->is_success() || $_->response->is_info() || $_->response->code == 404) {
-			print '<tr class="success">';
+			print '<tr class="successful">';
 		} elsif ($_->response->is_redirect()) {
 			print '<tr class="warning">';
 		} else {
 			print '<tr class="error">';
 		}
-		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->response->request->uri() . '</a></td><td>' . $_->response->status_line() . '</td><td>' . $_->when() . '</td><td>' . $_->responseTime() . 's</td></tr>';
+		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->response->request->uri() . '</a></td><td><span class="label label-success">' . $_->label() . '</span></td><td>' . $_->response->status_line() . '</td><td>' . $_->when() . '</td><td>' . $_->responseTime() . 's</td></tr>';
 	}
 	print '</tbody></table>';
-	print '</div>';
 }
 
 sub printHead() {
 	print "Content-Type: text/html; charset=UTF-8\n\n";
 	print "<!DOCTYPE html>\n<html>\n<head><title>Domain statusoverview</title><link href=\"https://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css\" rel=\"stylesheet\"></head>\n<body>\n";
+	print '<div class="container">';
 	print "<h1>Domain status overview</h1>";
+
 }
 
 sub printTail() {
-	print "<footer>&copy; <a href=\"http://www.vegaasen.com\" target=\"_blank\">vegaasen</a></footer>\n</body></html>\n";
+	print '</div>';
+	print "<footer>&copy; <a href=\"http://www.vegaasen.com\" target=\"_blank\">vegaasen</a> | last updated " . $serverStatuses[0]->when() . " </footer>\n</body></html>\n";
 }
 
 # Start the thingie, plx!
 
-checkAddresses();
+configure();
+checkAllDomains();
 cleanUp();
+
 printHead();
 printAllStatuses();
 printTail();
