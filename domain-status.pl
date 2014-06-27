@@ -191,7 +191,7 @@ sub printAllStatuses() {
 			$status = "glyphicon glyphicon-fire";
 			print '<tr class="danger">';
 		}
-		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->host() . '</a></td><td><span class="label label-success" style="background-color:' . $_->color() . '">' . $_->label() . '</span></td><td><span class="' . $status . '"><!--' . $_->response->status_line() . '--></span></td><td>' . $_->when() . '</td><td><span class="badge pull-right">~' . $_->responseTime() . 's</span></td></tr>';
+		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->host() . '</a></td><td><span class="label label-success" style="background-color:' . $_->color() . '">' . $_->label() . '</span></td><td><span class="' . $status . '"><!--' . $_->response->status_line() . '--></span></td><td>' . $_->when() . '</td><td><span class="badge pull-right">~ ' . $_->responseTime() . 's</span></td></tr>';
 	}
 	print '</tbody></table>';
 }
@@ -201,7 +201,7 @@ sub printHeaders() {
 }
 
 sub printHead() {
-	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='1000'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"></head>\n<body>\n";
+	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='60'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"></head>\n<body>\n";
 	print '<div class="container">';
 	print "<h1>$appTitle</h1>";
 
