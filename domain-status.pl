@@ -63,6 +63,7 @@ use LWP::UserAgent;
 use Time::Piece;
 use URI::URL;
 
+my $appTitle = "#domainStatus";
 my $error_log  = 'uptime.err';
 my $domains = 'domain.list';
 my $response_limit = 5; 
@@ -177,16 +178,20 @@ sub toss() {
 }
 
 sub printAllStatuses() {
-	print '<table class="table table-striped"><thead><tr><th>URL</th><th>Label</th><th>Status</th><th>When Requested</th><th>Response Time</th></tr></thead><tbody>';
+	my $status = "glyphicon glyphicon-minus";
+	print '<table class="table table-striped table-hover"><thead><tr><th>DNS/Domain</th><th>Label</th><th>Status</th><th>Requested</th><th>Response (in seconds)</th></tr></thead><tbody>';
 	foreach(@serverStatuses) {
 		if ($_->response->is_success() || $_->response->is_info() || $_->response->code == 404) {
 			print '<tr class="successful">';
+			$status = "glyphicon glyphicon-thumbs-up";
 		} elsif ($_->response->is_redirect()) {
 			print '<tr class="warning">';
+			$status = "glyphicon glyphicon-flash";
 		} else {
-			print '<tr class="error">';
+			$status = "glyphicon glyphicon-fire";
+			print '<tr class="danger">';
 		}
-		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->host() . '</a></td><td><span class="label label-success" style="background-color:' . $_->color() . '">' . $_->label() . '</span></td><td>' . $_->response->status_line() . '</td><td>' . $_->when() . '</td><td>' . $_->responseTime() . 's</td></tr>';
+		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->host() . '</a></td><td><span class="label label-success" style="background-color:' . $_->color() . '">' . $_->label() . '</span></td><td><span class="' . $status . '"><!--' . $_->response->status_line() . '--></span></td><td>' . $_->when() . '</td><td><span class="badge pull-right">~' . $_->responseTime() . 's</span></td></tr>';
 	}
 	print '</tbody></table>';
 }
@@ -196,15 +201,15 @@ sub printHeaders() {
 }
 
 sub printHead() {
-	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='10'><title>Domain statusoverview</title><link href=\"https://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css\" rel=\"stylesheet\"></head>\n<body>\n";
+	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='1000'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"></head>\n<body>\n";
 	print '<div class="container">';
-	print "<h1>#domainStatus</h1>";
+	print "<h1>$appTitle</h1>";
 
 }
 
 sub printTail() {
 	print '</div>';
-	print "<footer>&copy; <a href=\"http://www.vegaasen.com\" target=\"_blank\">vegaasen</a> | last updated " . $serverStatuses[0]->when() . " </footer>\n</body></html>\n";
+	print "<footer class=\"text-right\">&copy; <a href=\"http://www.vegaasen.com\" target=\"_blank\">vegaasen</a> | last updated <em>" . $serverStatuses[0]->when() . "</em></footer>\n</body></html>\n";
 }
 
 # Start the thingie, plx!

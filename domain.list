@@ -4,12 +4,12 @@ http://dev-testclient-sso.corp.telenor.no
 http://dev-idp.corp.telenor.no
 http://dev-idp.telenor.no
 http://dev-mgmt-apigee.corp.telenor.no:9000
-#name:systest#color:#74D3FF
+#name:systest#color:#43B12E
 https://test-tss-admin.corp.telenor.no/login
 https://test-testclient-sso.telenor.no
 https://test-idp.corp.telenor.no
 https://test-idp.telenor.no
-#name:prod#color:#7AD159
+#name:prod#color:#FF7E7E
 https://idp.corp.telenor.no
 https://idp.telenor.no
 https://tss-admin.corp.telenor.no/login
