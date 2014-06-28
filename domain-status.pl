@@ -66,16 +66,17 @@ use URI::URL;
 my $appTitle = "#domainStatus";
 my $error_log  = 'uptime.err';
 my $domains = 'domain.list';
-my $response_limit = 5; 
-my $timeotLimit = 10;
-my $consolePrint = 0;
-my $logPrint = 0;
 my $localtime     = localtime;
 my @serverStatuses;
 my @errors;
 my ($day,$month,$date,$hour,$year) = split /\s+/,scalar localtime;
 my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.out';
 my (@all_addr) = ();
+my $response_limit = 5; 
+my $timeotLimit = 10;
+# configure logging
+my $consolePrint = 0; #<-- Print stuff to console as well - for debugging purposes
+my $logPrint = 0; #<-- Print stuff to a file, if not - then CBA.
 
 die "File $domains is not exist\n" unless (-e $domains);
 
@@ -91,10 +92,11 @@ sub configure() {
 }
 
 sub checkAllDomains() {
-	print OUT "\n+" .('-' x 84) . "+\n";
-	print OUT   "|", ' ' x 30,"Time: $hour",' ' x 40,"|\n";
-	print OUT   "|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, "RESPONSE\t|\n";
-	print OUT   "+" .('-' x 84) . "+\n";
+	tossToFile("\n+" .('-' x 84) . "+\n");
+	
+	tossToFile("|", ' ' x 30,"Time: $hour",' ' x 40,"|\n");
+	tossToFile("|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, "RESPONSE\t|\n");
+	tossToFile("+" .('-' x 84) . "+\n");
 	my $name;
 	my $color = "#7A7A7A";
 	for (0 .. $#all_addr) {
@@ -110,7 +112,7 @@ sub checkAllDomains() {
 	   checkSingleDomain($all_addr[$_], $name, $color);
 	 } else {
 	   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "<--INCORRECT", "N/A";
-	   printf OUT $out_format;
+	   tossToFile($out_format);
 	   toss($out_format);
 	   push @errors, "$all_addr[$_] is not a valid domain.";
 	 }
@@ -140,12 +142,12 @@ sub checkSingleDomain {
 		 $out_format = sprintf "| %-50.50s %-10s %-20s |\n", 
 			  $target, "ACCESSED", "Response $endTime seconds";
 	  }
-	  print OUT $out_format;
+	  tossToFile($out_format);
 	  toss($out_format);
 	} else {
 	  my $out_format = sprintf "| %-50.50s %-10s %-20s |\n", $target, "DOWN", " N/A";
 	  push(@errors, "$target is DOWN." . $res->status_line) or error("Cannot push error for DOWN");
-	  print OUT $out_format;
+	  tossToFile($out_format);
 	  toss($out_format);
     }
 }
@@ -154,9 +156,10 @@ sub cleanUp() {
 	my $err = join "\015\012",@errors;
 	my $err_num = scalar @errors;
 	untie @all_addr or error("Unable to close file $domains");
-
-	close OUT or error("Unable to close file $output_file");
-	toss("Server check is complete");
+	if($logPrint != 0) {
+		close OUT or error("Unable to close file $output_file");
+	}
+	toss("Server cleanUp is complete");
 }
 
 sub storeServerStatus() {
@@ -175,6 +178,13 @@ sub toss() {
 	my $what = $_[0];
 	if($consolePrint == 1) {
 		print $what;
+	}
+}
+
+sub tossToFile() {
+	if($logPrint != 0) {
+		my $what = $_;
+		print OUT $what;
 	}
 }
 
