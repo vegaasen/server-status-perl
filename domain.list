@@ -6,6 +6,7 @@ http://dev-idp.telenor.no
 http://dev-mgmt-apigee.corp.telenor.no:9000
 #name:systest#color:#43B12E
 https://test-tss-admin.corp.telenor.no/login
+https://ssotest:ssotest@test-ssoapi.corp.telenor.no
 https://test-testclient-sso.telenor.no
 https://test-idp.corp.telenor.no
 https://test-idp.telenor.no

@@ -67,7 +67,9 @@ my $appTitle = "#domainStatus";
 my $error_log  = 'uptime.err';
 my $domains = 'domain.list';
 my $response_limit = 5; 
+my $timeotLimit = 10;
 my $consolePrint = 0;
+my $logPrint = 0;
 my $localtime     = localtime;
 my @serverStatuses;
 my @errors;
@@ -79,12 +81,12 @@ die "File $domains is not exist\n" unless (-e $domains);
 
 sub configure() {
 	tie @all_addr, 'Tie::File', $domains or error("Cant open file {$domains} to read the list of domains");
-	if (-e $output_file) {
-	   open(OUT,">> $output_file") 
-		  or error("Cant append to existing file $output_file");
-	} else {
-	   open(OUT,"> $output_file") 
-		  or error("Cant write to file $output_file");
+	if($logPrint != 0) {
+		if (-e $output_file) {
+		   open(OUT,">> $output_file") or error("Cant append to existing file $output_file");
+		} else {
+		   open(OUT,"> $output_file") or error("Cant write to file $output_file");
+		}
 	}
 }
 
@@ -120,8 +122,7 @@ sub checkSingleDomain {
     my $target = $targetUrl->as_string();
     my $label = $_[1];
     my $color = $_[2];
-	my $ua = LWP::UserAgent->new(ssl_opts => {verify_hostname => 0});
-	$ua->agent("DomainStatusPerl/0.1-SNAPSHOT");
+	my $ua = LWP::UserAgent->new(ssl_opts => {verify_hostname => 0, timeout => $timeotLimit, Timeout => $timeotLimit}, timeout => $timeotLimit, keep_alive => 0, agent => "DomainStatusPerl/0.1-SNAPSHOT");
 	my $req = HTTP::Request->new(GET => "$target");
 	$req->header('Accept' => '*/*');
 	my $startTime = time;
@@ -211,8 +212,6 @@ sub printTail() {
 	print '</div>';
 	print "<footer class=\"text-right\">&copy; <a href=\"http://www.vegaasen.com\" target=\"_blank\">vegaasen</a> | last updated <em>" . $serverStatuses[0]->when() . "</em></footer>\n</body></html>\n";
 }
-
-# Start the thingie, plx!
 
 configure();
 checkAllDomains();
