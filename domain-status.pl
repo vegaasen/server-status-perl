@@ -102,14 +102,14 @@ sub checkAllDomains() {
 	tossToFile("|", ' ' x 30,"Time: $hour",' ' x 40,"|\n");
 	tossToFile("|",' 'x 10,'HOST',' ' x 37,'STATUS',' ' x 7, "RESPONSE\t|\n");
 	tossToFile("+" .('-' x 84) . "+\n");
-	my $name;
+	my $name = "";
 	my $color = "#7A7A7A";
 	for (0 .. $#all_addr) {
 		my $currentLine = $all_addr[$_];
 	 chop $currentLine if ($currentLine =~ /\s+$/);
 	 next if ($currentLine  eq "");
-	 if ($currentLine =~ /^((.*)#{1,1}name:([\w]+)#.*)/) {
-	 	$name = (split /^((.*)#{1,1}name:([\w]+)#.*)/, $currentLine)[3, 3];
+	 if ($currentLine =~ /^((.*)#{1,1}name:([\w\-\_]+)#.*)/) {
+	 	$name = (split /^((.*)#{1,1}name:([\w\-\_]+)#.*)/, $currentLine)[3, 3];
 	 }
 	 if ($currentLine =~ /^((.*)#{1,1}color:(.*))/) {
 		$color = (split /^((.*)#{1,1}color:(.*))/, $currentLine)[3, 3];
@@ -212,7 +212,7 @@ sub error {
 sub toss() {
 	my $what = $_[0];
 	if($consolePrint == 1) {
-		print "$what\n";
+		print "$what";
 	}
 }
 
@@ -225,12 +225,12 @@ sub tossToFile() {
 
 sub printAllStatuses() {
 	my $status = "glyphicon glyphicon-minus";
-	print '<table class="table table-striped table-hover"><thead><tr><th>DNS/Domain</th><th>Label</th><th>Status</th><th>Requested</th><th>Response (in seconds)</th></tr></thead><tbody>';
+	print '<table class="table table-striped table-hover"><thead><tr><th>DNS/Domain/Entity</th><th>Label</th><th>Status</th><th>Requested</th><th>Response (in seconds)</th></tr></thead><tbody>';
 	foreach(@serverStatuses) {
-		if ($_->response->is_success() || $_->response->is_info() || $_->response->code == 404) {
+		if ($_->response->is_success() || $_->response->is_info()) {
 			print '<tr class="successful">';
 			$status = "glyphicon glyphicon-thumbs-up";
-		} elsif ($_->response->is_redirect()) {
+		} elsif ($_->response->is_redirect() || $_->response->code == 404) {
 			print '<tr class="warning">';
 			$status = "glyphicon glyphicon-flash";
 		} else {
