@@ -53,6 +53,11 @@ sub host {
 	return $self->{host};
 }
 
+sub placeholder {
+	my $self = shift;
+	return $self->{placeholder};
+}
+
 ###########################################
 package main;
 
@@ -100,23 +105,52 @@ sub checkAllDomains() {
 	my $name;
 	my $color = "#7A7A7A";
 	for (0 .. $#all_addr) {
-	 chop $all_addr[$_] if ($all_addr[$_] =~ /\s+$/);
-	 next if ($all_addr[$_]  eq "");
-	 if ($all_addr[$_] =~ /^((.*)#{1,1}name:([\w]+)#.*)/) {
-	 	$name = (split /^((.*)#{1,1}name:([\w]+)#.*)/, $all_addr[$_])[3, 3];
+		my $currentLine = $all_addr[$_];
+	 chop $currentLine if ($currentLine =~ /\s+$/);
+	 next if ($currentLine  eq "");
+	 if ($currentLine =~ /^((.*)#{1,1}name:([\w]+)#.*)/) {
+	 	$name = (split /^((.*)#{1,1}name:([\w]+)#.*)/, $currentLine)[3, 3];
 	 }
-	 if ($all_addr[$_] =~ /^((.*)#{1,1}color:(.*))/) {
-		$color = (split /^((.*)#{1,1}color:(.*))/, $all_addr[$_])[3, 3];
+	 if ($currentLine =~ /^((.*)#{1,1}color:(.*))/) {
+		$color = (split /^((.*)#{1,1}color:(.*))/, $currentLine)[3, 3];
 	 }
-	 if ($all_addr[$_] =~ /^(http(s)?):\/\/([\w]+.{0,1}|)([\w_\-]+)(.[\w]{0,})?.*/) {  
-	   checkSingleDomain($all_addr[$_], $name, $color);
-	 } else {
-	   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $all_addr[$_], "<--INCORRECT", "N/A";
-	   tossToFile($out_format);
-	   toss($out_format);
-	   push @errors, "$all_addr[$_] is not a valid domain.";
-	 }
+	 	if ($currentLine =~ /^(http(s)?):\/\/([\w]+.{0,1}|)([\w_\-]+)(.[\w]{0,})?.*/ || $currentLine =~ /^\{.*\:(http.*)}/) {
+	   		checkSingleDomain(getDomain($currentLine), $name, $color, getLabel($currentLine));
+ 		} else {
+		   my $out_format = sprintf "| %-50.50s %-10s  %-20s|\n", $currentLine, "<--INCORRECT", "N/A";
+		   tossToFile($out_format);
+		   toss($out_format);
+		   push @errors, "$currentLine is not a valid domain.";
+	 	}
 	}
+}
+
+sub getDomain() {
+	my $potential = $_[0];
+	if ($potential =~ /^(http(s)?):\/\/([\w]+.{0,1}|)([\w_\-]+)(.[\w]{0,})?.*/) {
+		toss("No changes detected");
+	} elsif ($potential =~ /^\{.*location\:(http.*)}/) {
+		$potential = (split /^\{.*location\:(http.*)}/, $potential)[1, 1];
+	}
+	toss("Found location, returning $potential");
+	return $potential;
+}
+
+sub getLabel() {
+	my $potential;
+	if (length $_[0]) {
+		$potential = $_[0];
+		if ($potential =~ /^\{.*label\:([\w\s]+),.*}/) {
+			$potential = (split /^\{.*label\:([\w\s]+),.*}/, $potential)[1, 1];
+			toss("Found label, returning $potential");
+		}else{
+			$potential = "";
+		}
+	}else{
+		$potential = "";
+		toss("Label not found. Returning empty");
+	}
+	return $potential;
 }
 
 sub checkSingleDomain {
@@ -124,6 +158,7 @@ sub checkSingleDomain {
     my $target = $targetUrl->as_string();
     my $label = $_[1];
     my $color = $_[2];
+    my $placeholder = $_[3];
 	my $ua = LWP::UserAgent->new(ssl_opts => {verify_hostname => 0, timeout => $timeotLimit, Timeout => $timeotLimit}, timeout => $timeotLimit, keep_alive => 0, agent => "DomainStatusPerl/0.1-SNAPSHOT");
 	my $req = HTTP::Request->new(GET => "$target");
 	$req->header('Accept' => '*/*');
@@ -131,7 +166,7 @@ sub checkSingleDomain {
 	my $res = $ua->request($req);
 	my $endTime = time;
 	$endTime = ($endTime - $startTime);
-	my $result = Result->new(response => $res, responseTime => $endTime, when => localtime($startTime)->strftime('%d.%m-%Y @ %H:%M:%S'), label => $label, color => $color, host => $targetUrl->host());
+	my $result = Result->new(response => $res, responseTime => $endTime, when => localtime($startTime)->strftime('%d.%m-%Y @ %H:%M:%S'), label => $label, color => $color, host => $targetUrl->host(), placeholder => $placeholder);
 	storeServerStatus($result);
 	if ($res->is_success() || $res->is_redirect() || $res->is_info() || $res->code == 404) {
 	  my $out_format;
@@ -177,7 +212,7 @@ sub error {
 sub toss() {
 	my $what = $_[0];
 	if($consolePrint == 1) {
-		print $what;
+		print "$what\n";
 	}
 }
 
@@ -202,9 +237,20 @@ sub printAllStatuses() {
 			$status = "glyphicon glyphicon-fire";
 			print '<tr class="danger">';
 		}
-		print '<td><a href="' . $_->response->request->uri() . '" target="_blank">' . $_->host() . '</a></td><td><span class="label label-success" style="background-color:' . $_->color() . '">' . $_->label() . '</span></td><td><span class="' . $status . '"><!--' . $_->response->status_line() . '--></span></td><td>' . $_->when() . '</td><td><span class="badge pull-right">~ ' . $_->responseTime() . 's</span></td></tr>';
+		print '<td>' . printPlaceholderLink($_) . '</td><td><span class="label label-success" style="background-color:' . $_->color() . '">' . $_->label() . '</span></td><td><span class="' . $status . '"><!--' . $_->response->status_line() . '--></span></td><td>' . $_->when() . '</td><td><span class="badge pull-right">~ ' . $_->responseTime() . 's</span></td></tr>';
 	}
 	print '</tbody></table>';
+}
+
+sub printPlaceholderLink() {
+	my $result = $_[0];
+	if(defined $result) {
+		if(length $result->placeholder) {
+			return '<a href="' . $_->response->request->uri() . '" target="_blank">' . $_->placeholder() . '</a>';
+		}else{
+			return '<a href="' . $_->response->request->uri() . '" target="_blank">' . $_->host() . '</a>';
+		}
+	}
 }
 
 sub printHeaders() {
