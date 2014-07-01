@@ -80,7 +80,8 @@ my (@all_addr) = ();
 my $response_limit = 5; 
 my $timeotLimit = 10;
 # configure the look of the screen
-my $bigScreen = 0;
+my $bigScreen = 1;
+my $blackMode = 1;
 # configure logging
 my $consolePrint = 0; #<-- Print stuff to console as well - for debugging purposes
 my $logPrint = 0; #<-- Print stuff to a file, if not - then CBA.
@@ -230,7 +231,7 @@ sub printAllStatuses() {
 	print '<table class="table table-striped table-hover"><thead><tr><th>DNS/Domain/Entity</th><th>Label</th><th>Status</th><th>Requested</th><th>Response (in seconds)</th></tr></thead><tbody>';
 	foreach(@serverStatuses) {
 		if ($_->response->is_success() || $_->response->is_info()) {
-			print '<tr class="successful">';
+			print '<tr class="successful faded">';
 			$status = "glyphicon glyphicon-thumbs-up";
 		} elsif ($_->response->is_redirect() || $_->response->code == 404) {
 			print '<tr class="warning">';
@@ -260,7 +261,7 @@ sub printHeaders() {
 }
 
 sub printHead() {
-	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='60'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"><style>.bigified {font-size:2em;}</style></head>\n<body>\n";
+	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='60'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"><style>.bigified {font-size:2em;}.faded{opacity:0.7;}.faded:hover{opacity:1;}</style></head>\n<body>\n";
 	if ($bigScreen == 1) {
 		print '<div class="container-fluid bigified">';
 	}else{
