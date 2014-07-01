@@ -68,7 +68,7 @@ use LWP::UserAgent;
 use Time::Piece;
 use URI::URL;
 
-my $appTitle = "#domainStatus";
+my $appTitle = "#statusScreen";
 my $error_log  = 'uptime.err';
 my $domains = 'domain.list';
 my $localtime     = localtime;
@@ -79,6 +79,8 @@ my $output_file = 'report-'.$date.'.'.$month.'.'.$year.'.out';
 my (@all_addr) = ();
 my $response_limit = 5; 
 my $timeotLimit = 10;
+# configure the look of the screen
+my $bigScreen = 0;
 # configure logging
 my $consolePrint = 0; #<-- Print stuff to console as well - for debugging purposes
 my $logPrint = 0; #<-- Print stuff to a file, if not - then CBA.
@@ -258,8 +260,12 @@ sub printHeaders() {
 }
 
 sub printHead() {
-	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='60'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"></head>\n<body>\n";
-	print '<div class="container">';
+	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='60'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"><style>.bigified {font-size:2em;}</style></head>\n<body>\n";
+	if ($bigScreen == 1) {
+		print '<div class="container-fluid bigified">';
+	}else{
+		print '<div class="container">';
+	}
 	print "<h1>$appTitle</h1>";
 
 }
