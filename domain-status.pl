@@ -261,7 +261,7 @@ sub printHeaders() {
 }
 
 sub printHead() {
-	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='60'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"><style>.bigified {font-size:2em;}.faded{opacity:0.7;}.faded:hover{opacity:1;}</style></head>\n<body>\n";
+	print "<!DOCTYPE html>\n<html>\n<head><meta http-equiv='refresh' content='60'><title>$appTitle</title><link rel=\"stylesheet\" href=\"http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css\"><style>.bigified {font-size:2em;}.faded{opacity:0.5;}.faded:hover{opacity:1;}</style></head>\n<body>\n";
 	if ($bigScreen == 1) {
 		print '<div class="container-fluid bigified">';
 	}else{
