@@ -4,6 +4,7 @@
 # -reads a domain-list that just issues a request to wherever specified. Then, it will just output this stuff to a specified file + 
 # as output, mimc'd through a html-page with page-reload.
 #
+# Note#1: You might need the LWP::Https scheme in order to allow https-connections flow through the application itself.
 # Error#1: Getting the following error in Apache?
 # --End of script output before headers
 # Error#1-solution: chmod 777 *
